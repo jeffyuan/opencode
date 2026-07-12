@@ -154,7 +154,13 @@ export function fromPromise(plugin: Plugin) {
               register(
                 host.tool.transform((draft) =>
                   callback({
-                    add: (tool: AnyTool) => draft.add(tool.name, fromPromiseTool(tool), tool.options),
+                    add: (tool: AnyTool) =>
+                      draft.add(tool.name, fromPromiseTool(tool), {
+                        ...(tool.options ?? {}),
+                        ...(tool.namespace !== undefined ? { namespace: tool.namespace } : {}),
+                        ...(tool.codemode !== undefined ? { codemode: tool.codemode } : {}),
+                        ...(tool.pinned !== undefined ? { pinned: tool.pinned } : {}),
+                      }),
                   }),
                 ),
               ),

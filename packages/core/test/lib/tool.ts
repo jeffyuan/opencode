@@ -53,9 +53,31 @@ export const registerToolPlugin = <R>(plugin: {
               readonly options?: Tool.RegisterOptions
             }> = []
             callback({
-              add: (name, tool, options) => {
-                registrations.push({ name, tool, ...(options ? { options } : {}) })
-              },
+              add: ((
+                nameOrTool: string | Tool.FlatDefinition<any, any, any> | Tool.FlatDynamicDefinition,
+                tool?: Tool.AnyTool,
+                options?: Tool.RegisterOptions,
+              ) => {
+                if (typeof nameOrTool === "string") {
+                  registrations.push({
+                    name: nameOrTool,
+                    tool: tool!,
+                    ...(options ? { options } : {}),
+                  })
+                  return
+                }
+                const flat = nameOrTool
+                const { name, namespace, codemode, pinned, ...config } = flat
+                registrations.push({
+                  name,
+                  tool: Tool.make(config as any),
+                  options: {
+                    ...(namespace !== undefined ? { namespace } : {}),
+                    ...(codemode !== undefined ? { codemode } : {}),
+                    ...(pinned !== undefined ? { pinned } : {}),
+                  },
+                })
+              }) as Tool.ToolDraft["add"],
             })
             yield* Effect.forEach(
               registrations,

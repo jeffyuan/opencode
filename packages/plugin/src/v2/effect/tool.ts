@@ -212,14 +212,14 @@ export const validateName = (name: string) =>
     ? Effect.void
     : Effect.fail(new RegistrationError({ name, message: `Invalid tool name: ${name}` }))
 
-export const registrationEntries = (tools: Readonly<Record<string, AnyTool>>, group?: string) =>
+export const registrationEntries = (tools: Readonly<Record<string, AnyTool>>, namespace?: string) =>
   Object.entries(tools).map(([name, tool]) => {
     const normalized = name.replace(/[^a-zA-Z0-9_-]/g, "_")
-    const parent = group?.replace(/[^a-zA-Z0-9_-]/g, "_")
+    const parent = namespace?.replace(/[^a-zA-Z0-9_-]/g, "_")
     return {
       key: parent === undefined ? normalized : `${parent}_${normalized}`,
       name: normalized,
-      group: parent,
+      namespace: parent,
       tool,
     }
   })
@@ -271,12 +271,50 @@ export interface ToolExecuteAfterEvent {
 }
 
 export interface RegisterOptions {
-  readonly group?: string
+  /** Dotted CodeMode path prefix, e.g. "slack.admin". */
+  readonly namespace?: string
   /** Defaults to true. False exposes the tool directly to the provider. */
   readonly codemode?: boolean
+  /** Defaults to false. Valid only when codemode !== false. */
+  readonly pinned?: boolean
+}
+
+export type FlatDefinition<
+  Input extends SchemaType<any>,
+  Output extends SchemaType<any>,
+  Structured extends SchemaType<any> = Output,
+> = {
+  readonly name: string
+  readonly namespace?: string
+  readonly codemode?: boolean
+  readonly pinned?: boolean
+  readonly description: string
+  readonly input: Input
+  readonly output: Output
+  readonly structured?: Structured
+  readonly toStructuredOutput?: Config<Input, Output, Structured>["toStructuredOutput"]
+  readonly execute: Config<Input, Output, Structured>["execute"]
+  readonly toModelOutput?: Config<Input, Output, Structured>["toModelOutput"]
+}
+
+export type FlatDynamicDefinition = {
+  readonly name: string
+  readonly namespace?: string
+  readonly codemode?: boolean
+  readonly pinned?: boolean
+  readonly description: string
+  readonly jsonSchema: JsonSchema.JsonSchema
+  readonly outputSchema?: JsonSchema.JsonSchema
+  readonly execute: DynamicConfig["execute"]
 }
 
 export interface ToolDraft {
+  add<
+    Input extends SchemaType<any>,
+    Output extends SchemaType<any>,
+    Structured extends SchemaType<any> = Output,
+  >(tool: FlatDefinition<Input, Output, Structured>): void
+  add(tool: FlatDynamicDefinition): void
   add(name: string, tool: AnyTool, options?: RegisterOptions): void
 }
 

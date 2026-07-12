@@ -55,8 +55,9 @@ const registryLayer = Layer.effect(
     type Registration = {
       readonly tool: AnyTool
       readonly name: string
-      readonly group?: string
+      readonly namespace?: string
       readonly codemode: boolean
+      readonly pinned: boolean
     }
     const local = new Map<string, Array<{ readonly token: object; readonly registration: Registration }>>()
 
@@ -130,9 +131,17 @@ const registryLayer = Layer.effect(
 
     return Service.of({
       register: Effect.fn("ToolRegistry.register")(function* (tools, options) {
-        const entries = registrationEntries(tools, options?.group)
+        const entries = registrationEntries(tools, options?.namespace)
         if (entries.length === 0) return
         const codemode = options?.codemode ?? true
+        const pinned = options?.pinned ?? false
+        if (pinned && !codemode)
+          return yield* Effect.fail(
+            new RegistrationError({
+              name: entries[0]?.key ?? "tool",
+              message: "pinned is only valid when codemode is not false",
+            }),
+          )
         const reserved = codemode ? undefined : entries.find((entry) => entry.key === "execute")
         if (reserved)
           return yield* Effect.fail(
@@ -149,8 +158,9 @@ const registryLayer = Layer.effect(
                   registration: {
                     tool: entry.tool,
                     name: entry.name,
-                    group: entry.group,
+                    namespace: entry.namespace,
                     codemode,
+                    pinned,
                   },
                 },
               ])

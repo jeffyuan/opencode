@@ -16,6 +16,10 @@ export type Definition<
   Structured extends SchemaType<any> = Output,
 > = {
   readonly name: string
+  readonly namespace?: string
+  readonly codemode?: boolean
+  readonly pinned?: boolean
+  /** @deprecated Prefer top-level namespace/codemode/pinned fields. */
   readonly options?: RegisterOptions
   readonly description: string
   readonly input: Input
@@ -37,6 +41,10 @@ export type Definition<
 
 export type DynamicDefinition = {
   readonly name: string
+  readonly namespace?: string
+  readonly codemode?: boolean
+  readonly pinned?: boolean
+  /** @deprecated Prefer top-level namespace/codemode/pinned fields. */
   readonly options?: RegisterOptions
   readonly description: string
   readonly jsonSchema: JsonSchema.JsonSchema
@@ -68,9 +76,12 @@ export interface ToolExecuteAfterEvent {
 }
 
 export interface RegisterOptions {
-  readonly group?: string
+  /** Dotted CodeMode path prefix, e.g. "slack.admin". */
+  readonly namespace?: string
   /** Defaults to true. False exposes the tool directly to the provider. */
   readonly codemode?: boolean
+  /** Defaults to false. Valid only when codemode !== false. */
+  readonly pinned?: boolean
 }
 
 export interface ToolDraft {
