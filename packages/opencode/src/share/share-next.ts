@@ -7,7 +7,7 @@ import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } fr
 import { Account } from "@/account/account"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { InstanceState } from "@/effect/instance-state"
-import { Provider } from "@/provider/provider"
+import { Provider, toPublicModel } from "@/provider/provider"
 
 import { Session } from "@/session/session"
 import { MessageV2 } from "@/session/message-v2"
@@ -188,7 +188,7 @@ const layer = Layer.effect(
             yield* sync(info.sessionID, [{ type: "message", data: structuredClone(info) as SDK.Message }])
             if (info.role !== "user") return
             const model = yield* provider.getModel(info.model.providerID, info.model.modelID)
-            yield* sync(info.sessionID, [{ type: "model", data: [model] }])
+            yield* sync(info.sessionID, [{ type: "model", data: [toPublicModel(model)] }])
           }),
         )
         yield* watch(MessageV2.Event.PartUpdated, (data) =>
@@ -285,7 +285,10 @@ const layer = Layer.effect(
               .map((item) => [`${item.providerID}/${item.modelID}`, item] as const),
           ).values(),
         ),
-        (item) => provider.getModel(ProviderV2.ID.make(item.providerID), ModelV2.ID.make(item.modelID)),
+        (item) =>
+          provider
+            .getModel(ProviderV2.ID.make(item.providerID), ModelV2.ID.make(item.modelID))
+            .pipe(Effect.map(toPublicModel)),
         { concurrency: 8 },
       )
 

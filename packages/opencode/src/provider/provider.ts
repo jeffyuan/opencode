@@ -1085,6 +1085,27 @@ export const ConfigProvidersResult = Schema.Struct({
 })
 export type ConfigProvidersResult = Types.DeepMutable<Schema.Schema.Type<typeof ConfigProvidersResult>>
 
+export function toPublicModel(model: Model): import("@opencode-ai/sdk/v2").Model {
+  return {
+    ...model,
+    reasoning_options: model.reasoning_options?.map((option) => {
+      if (option.type !== "effort") return option
+      return {
+        ...option,
+        values: option.values.filter((value): value is string => typeof value === "string"),
+      }
+    }),
+  }
+}
+
+function toPluginProvider(provider: Info): import("@opencode-ai/sdk/v2").Provider {
+  const info = toPublicInfo(provider)
+  return {
+    ...info,
+    models: Object.fromEntries(Object.entries(info.models).map(([id, model]) => [id, toPublicModel(model)])),
+  }
+}
+
 export function toPublicInfo(provider: Info): Info {
   return JSON.parse(
     JSON.stringify(
@@ -1441,7 +1462,7 @@ const layer = Layer.effect(
           const pluginAuth = yield* auth.get(providerID).pipe(Effect.orDie)
 
           provider.models = yield* Effect.promise(async () => {
-            const next = await models(toPublicInfo(provider), { auth: pluginAuth })
+            const next = await models(toPluginProvider(provider), { auth: pluginAuth })
             return Object.fromEntries(
               Object.entries(next).map(([id, model]) => [
                 id,
@@ -1589,7 +1610,7 @@ const layer = Layer.effect(
           const options = yield* Effect.promise(() =>
             plugin.auth!.loader!(
               () => bridge.promise(auth.get(providerID).pipe(Effect.orDie)) as any,
-              toPublicInfo(database[plugin.auth!.provider]),
+              toPluginProvider(database[plugin.auth!.provider]),
             ),
           )
           const opts = options ?? {}
@@ -1920,10 +1941,11 @@ const layer = Layer.effect(
       const provider = s.providers[providerID]
       if (!provider) return undefined
 
-      const experimental = yield* plugin.trigger<"experimental.provider.small_model">(
+      const output: { model?: import("@opencode-ai/sdk/v2").Model } = { model: undefined }
+      const experimental = yield* plugin.trigger(
         "experimental.provider.small_model",
-        { provider: toPublicInfo(provider) },
-        { model: undefined },
+        { provider: toPluginProvider(provider) },
+        output,
       )
       if (experimental.model) {
         return {
